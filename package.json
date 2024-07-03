@@ -1,4 +1,9 @@
 {
+  "name": "documents_generator",
+  "version": "1.0.1",
+  "description": "Вспомогательный инструмент для участников партнёрской программы, для подготовки Актов Выполненных Работ",
+  "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "generate": "node index.js"
   },

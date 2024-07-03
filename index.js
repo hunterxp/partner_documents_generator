@@ -15,6 +15,19 @@ const lastDayOfMonthDate = new Date(currentDate.getFullYear(), currentDate.getMo
 
 const currentMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
+// Проверка существования токена авторизации
+if (!BEARER_TOKEN) {
+    console.error('BEARER_TOKEN is not defined in the environment variables');
+    process.exit(1);
+}
+
+// Проверка наличия файла шаблона
+const templatePath = 'template.docx';
+if (!fs.existsSync(templatePath)) {
+    console.error(`Template file ${templatePath} not found`);
+    process.exit(1);
+}
+
 async function getServerStatistics(date) {
     const response = await axios.get(`https://partners.playkey.net/api/v1/servers/statistic?date=${date}`, {
         headers: {
@@ -51,7 +64,6 @@ function numberToWordsRuFormat(num) {
                 fractional: false,
             },
         });
-        console.log(`Converted number ${num} to words: ${words}`);
         return words;
     } catch (error) {
         console.error('Error converting number to words:', error);
@@ -70,7 +82,6 @@ function formatDate(date) {
             month: 'long',
             year: 'numeric'
         }).replace(/ г\./, '');  // Удаление " г." из строки
-        console.log(`Formatted date: ${formattedDate}`);
         return formattedDate;
     } catch (error) {
         console.error('Error formatting date:', error);
@@ -80,7 +91,7 @@ function formatDate(date) {
 
 async function generateDocument(serverDetails, totalEarnings) {
     try {
-        const content = fs.readFileSync('template.docx', 'binary');
+        const content = fs.readFileSync(templatePath, 'binary');
         const zip = new PizZip(content);
         const doc = new Docxtemplater(zip, {
             paragraphLoop: true,
@@ -108,6 +119,9 @@ async function generateDocument(serverDetails, totalEarnings) {
 
         doc.render(data);
 
+        // Оптимизация содержимого перед сжатием
+        zip.remove('word/settings.xml');
+
         const monthName = lastDayOfMonthDate.toLocaleString('ru-RU', { month: 'long' });
         const year = lastDayOfMonthDate.getFullYear();
         const month = lastDayOfMonthDate.getMonth() + 1; // January is 0
@@ -121,12 +135,12 @@ async function generateDocument(serverDetails, totalEarnings) {
 
         // Записываем файл в директорию /output
         const outputPath = path.join(outputDir, fileName);
-        const buf = doc.getZip().generate({ type: 'nodebuffer' });
+        const buf = zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }); // добавим сжатие для оптимизации размера файла
         fs.writeFileSync(outputPath, buf);
 
         console.log(`Document saved to ${outputPath}`);
     } catch (error) {
-        console.error('Error generating document:', error);
+        console.error('Error generating document:', error.message);
         throw error;
     }
 }
@@ -145,8 +159,8 @@ calculateTotalSecondsByDay().then(({ serverDetails }) => {
         console.error('Error generating document:', error.message);
     });
 
-    console.log(`\nTotal gaming time in ${lastDayOfMonthDate.toLocaleString('ru-RU', { month: 'long' })}: ${(grandTotal / 60).toFixed(0)} minutes.`);
-    console.log(`Total money in ${lastDayOfMonthDate.toLocaleString('ru-RU', { month: 'long' })}: ${totalEarnings.toFixed(0)} rubles.`);
+    console.log(`\nTotal gaming time in ${lastDayOfMonthDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' })}: ${(grandTotal / 60).toFixed(0)} minutes.`);
+    console.log(`Total money in ${lastDayOfMonthDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' })}: ${totalEarnings.toFixed(2)} rubles.`);
 }).catch(error => {
     console.error('Error occurred:', error.message);
 });
