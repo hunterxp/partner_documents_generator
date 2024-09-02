@@ -38,7 +38,7 @@ async function getServerStatistics(date) {
 }
 
 async function calculateTotalSecondsByDay() {
-    const dateString = currentMonthDate.toISOString().split('T')[0]; // Форматируем дату как YYYY-MM-DD
+    const dateString = startOfMonthDate.toISOString().split('T')[0]; // Форматируем дату как YYYY-MM-DD
     const statistics = await getServerStatistics(dateString);
 
     let serverDetails = statistics.map(server => ({
