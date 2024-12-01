@@ -29,7 +29,7 @@ if (!fs.existsSync(templatePath)) {
 }
 
 async function getServerStatistics(date) {
-    const response = await axios.get(`https://partners.playkey.net/api/v1/servers/statistic?date=${date}`, {
+    const response = await axios.get(`https://partners.cloud.vkplay.ru/api/v1/servers/statistic?date=${date}`, {
         headers: {
             'Authorization': `Bearer ${BEARER_TOKEN}`
         }

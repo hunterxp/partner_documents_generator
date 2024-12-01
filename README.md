@@ -56,7 +56,7 @@ run.bat
 
 ### Где взять токен авторизации?
 
-1. После авторизации, на странице https://partners.playkey.net/pages/servers откройте DevTools (например, для Google Chrome, это делается комбинацией клавиш CTRL+SHIFT+I, либо F12).
+1. После авторизации, на странице https://partners.cloud.vkplay.ru/pages/servers откройте DevTools (например, для Google Chrome, это делается комбинацией клавиш CTRL+SHIFT+I, либо F12).
 
 2. Далее переключайтесь на вкладку `Network` и выберите фильтр `Fetch/XHR`
 
