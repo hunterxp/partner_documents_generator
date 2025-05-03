@@ -1,166 +1,206 @@
 require("dotenv").config();
-const axios = require('axios');
-const fs = require('fs');
-const PizZip = require('pizzip');
-const Docxtemplater = require('docxtemplater');
-const numberToWordsRu = require('number-to-words-ru').convert;
-const path = require('path');
+const axios = require("axios");
+const fs = require("fs");
+const PizZip = require("pizzip");
+const Docxtemplater = require("docxtemplater");
+const numberToWordsRu = require("number-to-words-ru").convert;
+const path = require("path");
 
 const BEARER_TOKEN = process.env.BEARER_TOKEN;
-const LAST_NAME = process.env.LAST_NAME || '';
+const LAST_NAME = process.env.LAST_NAME || "";
 
 const currentDate = new Date();
-const startOfMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-const lastDayOfMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0);
-
-const currentMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+const startOfMonthDate = new Date(
+  currentDate.getFullYear(),
+  currentDate.getMonth() - 1,
+  1
+);
+const lastDayOfMonthDate = new Date(
+  currentDate.getFullYear(),
+  currentDate.getMonth(),
+  0
+);
+const currentMonthDate = new Date(
+  currentDate.getFullYear(),
+  currentDate.getMonth(),
+  1
+);
 
 // Проверка существования токена авторизации
 if (!BEARER_TOKEN) {
-    console.error('BEARER_TOKEN is not defined in the environment variables');
-    process.exit(1);
+  console.error("BEARER_TOKEN is not defined in the environment variables");
+  process.exit(1);
 }
 
 // Проверка наличия файла шаблона
-const templatePath = 'template.docx';
+const templatePath = "template.docx";
 if (!fs.existsSync(templatePath)) {
-    console.error(`Template file ${templatePath} not found`);
-    process.exit(1);
+  console.error(`Template file ${templatePath} not found`);
+  process.exit(1);
 }
 
 async function getServerStatistics(date) {
-    const response = await axios.get(`https://partners.cloud.vkplay.ru/api/v1/servers/statistic?date=${date}`, {
-        headers: {
-            'Authorization': `Bearer ${BEARER_TOKEN}`
-        }
-    });
-    return response.data;
+  const response = await axios.get(
+    `https://partners.cloud.vkplay.ru/api/v1/servers/statistic?date=${date}`,
+    {
+      headers: {
+        Authorization: `Bearer ${BEARER_TOKEN}`,
+      },
+    }
+  );
+  return response.data;
 }
 
 async function calculateTotalSecondsByDay() {
-    const dateString = startOfMonthDate.toISOString().split('T')[0]; // Форматируем дату как YYYY-MM-DD
-    const statistics = await getServerStatistics(dateString);
+  const dateString = currentMonthDate.toISOString().split("T")[0]; // YYYY-MM-DD
+  const statistics = await getServerStatistics(dateString);
 
-    let serverDetails = statistics.map(server => ({
-        vm_name: server.vm_name,
-        minutes: Math.floor(server.session_seconds / 60),
-        earnings: (server.session_seconds / 60) * server.playtime_cost
-    }));
+  const serverDetails = statistics.map((server) => {
+    const minutes = Math.floor(server.session_seconds / 60);
+    const costPerMinute = parseFloat(server.playtime_cost);
+    const earnings = minutes * costPerMinute;
+    return {
+      vm_name: server.vm_name,
+      minutes,
+      costPerMinute, // если понадобится в отчёте
+      earnings,
+    };
+  });
 
-    return { serverDetails };
+  return { serverDetails };
 }
 
 function numberToWordsRuFormat(num) {
-    try {
-        const words = numberToWordsRu(num, {
-            currency: 'rub',
-            declension: 'nominative',
-            showNumberParts: {
-                integer: true,
-                fractional: false,
-            },
-            showCurrency: {
-                integer: false,
-                fractional: false,
-            },
-        });
-        return words;
-    } catch (error) {
-        console.error('Error converting number to words:', error);
-        throw error;
-    }
+  try {
+    return numberToWordsRu(num, {
+      currency: "rub",
+      declension: "nominative",
+      showNumberParts: { integer: true, fractional: false },
+      showCurrency: { integer: false, fractional: false },
+    });
+  } catch (error) {
+    console.error("Error converting number to words:", error);
+    throw error;
+  }
 }
 
 function extractKopecks(amount) {
-    return Math.round((amount - Math.floor(amount)) * 100);
+  return Math.round((amount - Math.floor(amount)) * 100);
 }
 
 function formatDate(date) {
-    try {
-        const formattedDate = date.toLocaleDateString('ru-RU', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric'
-        }).replace(/ г\./, '');  // Удаление " г." из строки
-        return formattedDate;
-    } catch (error) {
-        console.error('Error formatting date:', error);
-        throw error;
-    }
+  try {
+    return date
+      .toLocaleDateString("ru-RU", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+      .replace(/ г\./, "");
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    throw error;
+  }
 }
 
 async function generateDocument(serverDetails, totalEarnings) {
-    try {
-        const content = fs.readFileSync(templatePath, 'binary');
-        const zip = new PizZip(content);
-        const doc = new Docxtemplater(zip, {
-            paragraphLoop: true,
-            linebreaks: true,
-        });
+  try {
+    const content = fs.readFileSync(templatePath, "binary");
+    const zip = new PizZip(content);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+    });
 
-        const totalEarningsRub = Math.floor(totalEarnings);
-        const totalEarningsKop = extractKopecks(totalEarnings);
-        const totalEarningsText = `${totalEarningsRub} (${(numberToWordsRuFormat(totalEarningsRub)).toLowerCase()}) руб. ${totalEarningsKop} коп.`;
+    const totalEarningsRub = Math.floor(totalEarnings);
+    const totalEarningsKop = extractKopecks(totalEarnings);
+    const totalEarningsText = `${totalEarningsRub} (${numberToWordsRuFormat(
+      totalEarningsRub
+    ).toLowerCase()}) руб. ${totalEarningsKop} коп.`;
 
-        const data = {
-            date: `${lastDayOfMonthDate.toLocaleString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' })}`,
-            startDate: formatDate(startOfMonthDate),
-            endDate: formatDate(lastDayOfMonthDate),
-            serverDetails: serverDetails.map((server, index) => ({
-                index: index + 1,
-                vm_name: server.vm_name,
-                minutes: server.minutes,
-                earnings: server.earnings.toFixed(2)
-            })),
-            totalEarnings: totalEarningsText
-        };
+    const data = {
+      date: `${lastDayOfMonthDate.toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })}`,
+      startDate: formatDate(startOfMonthDate),
+      endDate: formatDate(lastDayOfMonthDate),
+      serverDetails: serverDetails.map((server, index) => ({
+        index: index + 1,
+        vm_name: server.vm_name,
+        minutes: server.minutes,
+        earnings: server.earnings.toFixed(2),
+      })),
+      totalEarnings: totalEarningsText,
+    };
 
-        console.log('Data to be rendered in the document:', data);
+    console.log("Data to be rendered in the document:", data);
 
-        doc.render(data);
+    doc.render(data);
 
-        // Оптимизация содержимого перед сжатием
-        zip.remove('word/settings.xml');
+    // Оптимизация содержимого перед сжатием
+    zip.remove("word/settings.xml");
 
-        const monthName = lastDayOfMonthDate.toLocaleString('ru-RU', { month: 'long' });
-        const year = lastDayOfMonthDate.getFullYear();
-        const month = lastDayOfMonthDate.getMonth() + 1; // January is 0
-        const fileName = `${year}-${month.toString().padStart(2, '0')} (${monthName}) Акт выполненных работ ${LAST_NAME}.docx`;
+    const monthName = lastDayOfMonthDate.toLocaleString("ru-RU", {
+      month: "long",
+    });
+    const year = lastDayOfMonthDate.getFullYear();
+    const month = (lastDayOfMonthDate.getMonth() + 1)
+      .toString()
+      .padStart(2, "0");
+    const fileName = `${year}-${month} (${monthName}) Акт выполненных работ ${LAST_NAME}.docx`;
 
-        // Создаем директорию /output, если она не существует
-        const outputDir = path.join(__dirname, 'output');
-        if (!fs.existsSync(outputDir)) {
-            fs.mkdirSync(outputDir);
-        }
-
-        // Записываем файл в директорию /output
-        const outputPath = path.join(outputDir, fileName);
-        const buf = zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }); // добавим сжатие для оптимизации размера файла
-        fs.writeFileSync(outputPath, buf);
-
-        console.log(`Document saved to ${outputPath}`);
-    } catch (error) {
-        console.error('Error generating document:', error.message);
-        throw error;
+    const outputDir = path.join(__dirname, "output");
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir);
     }
+
+    const outputPath = path.join(outputDir, fileName);
+    const buf = zip.generate({ type: "nodebuffer", compression: "DEFLATE" });
+    fs.writeFileSync(outputPath, buf);
+
+    console.log(`Document saved to ${outputPath}`);
+  } catch (error) {
+    console.error("Error generating document:", error.message);
+    throw error;
+  }
 }
 
-calculateTotalSecondsByDay().then(({ serverDetails }) => {
-    let grandTotal = 0;
-    serverDetails.forEach(server => {
-        grandTotal += server.minutes * 60; // конвертируем обратно в секунды для вычисления общего времени
-    });
+calculateTotalSecondsByDay()
+  .then(({ serverDetails }) => {
+    // Суммируем доход по каждому серверу
+    const totalEarnings = serverDetails.reduce(
+      (sum, server) => sum + server.earnings,
+      0
+    );
 
-    const totalEarnings = grandTotal / 60 * 0.3;
-
-    generateDocument(serverDetails, totalEarnings).then(() => {
+    generateDocument(serverDetails, totalEarnings)
+      .then(() => {
         console.log("Документ успешно создан!");
-    }).catch(error => {
-        console.error('Error generating document:', error.message);
-    });
+      })
+      .catch((error) => {
+        console.error("Error generating document:", error.message);
+      });
 
-    console.log(`\nTotal gaming time in ${lastDayOfMonthDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' })}: ${(grandTotal / 60).toFixed(0)} minutes.`);
-    console.log(`Total money in ${lastDayOfMonthDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' })}: ${totalEarnings.toFixed(2)} rubles.`);
-}).catch(error => {
-    console.error('Error occurred:', error.message);
-});
+    const totalMinutes = serverDetails.reduce(
+      (sum, server) => sum + server.minutes,
+      0
+    );
+
+    console.log(
+      `\nTotal gaming time in ${lastDayOfMonthDate.toLocaleString("ru-RU", {
+        month: "long",
+        year: "numeric",
+      })}: ${totalMinutes} minutes.`
+    );
+    console.log(
+      `Total money in ${lastDayOfMonthDate.toLocaleString("ru-RU", {
+        month: "long",
+        year: "numeric",
+      })}: ${totalEarnings.toFixed(2)} rubles.`
+    );
+  })
+  .catch((error) => {
+    console.error("Error occurred:", error.message);
+  });
