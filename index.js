@@ -38,13 +38,13 @@ async function getServerStatistics(date) {
 }
 
 async function calculateTotalSecondsByDay() {
-    const dateString = currentMonthDate.toISOString().split('T')[0]; // Форматируем дату как YYYY-MM-DD
+    const dateString = startOfMonthDate.toISOString().split('T')[0]; // Форматируем дату как YYYY-MM-DD
     const statistics = await getServerStatistics(dateString);
 
     let serverDetails = statistics.map(server => ({
         vm_name: server.vm_name,
         minutes: Math.floor(server.session_seconds / 60),
-        earnings: (server.session_seconds / 60) * 0.3
+        earnings: (server.session_seconds / 60) * server.playtime_cost
     }));
 
     return { serverDetails };
