@@ -29,7 +29,7 @@ if (!fs.existsSync(templatePath)) {
 }
 
 async function getServerStatistics(date) {
-    const response = await axios.get(`https://partners.playkey.net/api/v1/servers/statistic?date=${date}`, {
+    const response = await axios.get(`https://partners.cloud.vkplay.ru/api/v1/servers/statistic?date=${date}`, {
         headers: {
             'Authorization': `Bearer ${BEARER_TOKEN}`
         }
@@ -44,7 +44,7 @@ async function calculateTotalSecondsByDay() {
     let serverDetails = statistics.map(server => ({
         vm_name: server.vm_name,
         minutes: Math.floor(server.session_seconds / 60),
-        earnings: (server.session_seconds / 60) * 0.3
+        earnings: (server.session_seconds / 60) * server.playtime_cost
     }));
 
     return { serverDetails };
