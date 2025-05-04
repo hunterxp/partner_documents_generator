@@ -52,7 +52,9 @@ async function getServerStatistics(date) {
 }
 
 async function calculateTotalSecondsByDay() {
-  const dateString = currentMonthDate.toISOString().split("T")[0]; // YYYY-MM-DD
+  const dateString = `${startOfMonthDate.getFullYear()}-${String(
+    startOfMonthDate.getMonth() + 1
+  ).padStart(2, "0")}-${String(startOfMonthDate.getDate()).padStart(2, "0")}`;
   const statistics = await getServerStatistics(dateString);
 
   const serverDetails = statistics.map((server) => {
