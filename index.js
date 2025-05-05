@@ -114,7 +114,7 @@ async function generateDocument(serverDetails, totalEarnings) {
       linebreaks: true,
     });
 
-    const totalEarningsRub = Math.floor(totalEarnings);
+    let totalEarningsRub = Math.floor(totalEarnings);
     let totalEarningsKop = extractKopecks(totalEarnings);
     if (totalEarningsKop === 100) {
       totalEarningsRub += 1;
