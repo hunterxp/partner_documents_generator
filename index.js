@@ -115,7 +115,11 @@ async function generateDocument(serverDetails, totalEarnings) {
     });
 
     const totalEarningsRub = Math.floor(totalEarnings);
-    const totalEarningsKop = extractKopecks(totalEarnings);
+    let totalEarningsKop = extractKopecks(totalEarnings);
+    if (totalEarningsKop === 100) {
+      totalEarningsRub += 1;
+      totalEarningsKop = 0;
+    }
     const totalEarningsText = `${totalEarningsRub} (${numberToWordsRuFormat(
       totalEarningsRub
     ).toLowerCase()}) руб. ${totalEarningsKop} коп.`;
