@@ -59,12 +59,12 @@ async function calculateTotalSecondsByDay() {
 
   const serverDetails = statistics.map((server) => {
     const minutes = Math.floor(server.session_seconds / 60);
-    const costPerMinute = parseFloat(server.playtime_cost);
-    const earnings = minutes * costPerMinute;
+    const playtime_cost = parseFloat(server.playtime_cost);
+    const earnings = minutes * playtime_cost;
     return {
       vm_name: server.vm_name,
       minutes,
-      costPerMinute, // если понадобится в отчёте
+      playtime_cost,
       earnings,
     };
   });
@@ -136,6 +136,7 @@ async function generateDocument(serverDetails, totalEarnings) {
         index: index + 1,
         vm_name: server.vm_name,
         minutes: server.minutes,
+        playtime_cost: server.playtime_cost * 100,
         earnings: server.earnings.toFixed(2),
       })),
       totalEarnings: totalEarningsText,
